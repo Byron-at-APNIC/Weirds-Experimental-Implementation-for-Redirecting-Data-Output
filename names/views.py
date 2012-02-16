@@ -67,6 +67,18 @@ def makeEntity(prefix, data):
 
     return entity
 
+def delegationKeys(data, idx = 1):
+    if 'DS Key Tag %d' % idx not in data:
+        return []
+
+    key = SortedDict()
+    key['algorithm'] = data['Algorithm %d' % idx]
+    key['digest'] = data['Digest %d' % idx]
+    key['digestType'] = int(data['Digest Type %d' % idx])
+    key['keyTag'] = int(data['DS Key Tag %d' % idx])
+
+    return [key] + delegationKeys(data, idx + 1)
+
 def name(request, domain):
     data = lookup(domain)
 
@@ -90,14 +102,15 @@ def name(request, domain):
     response['domain']['expirationDate'] = dateFormat(datadict['Expiration Date'])
     response['domain']['remarks'] = datadict['terms'].split('\n')
     response['domain']['nameServers'] = [ns for ns in datadict['Name Server'] if ns != '']
-    # todo: delegationKeys
+
+    if datadict['DNSSEC'] == 'Signed':
+        response['domain']['delegationKeys'] = delegationKeys(datadict)
 
     response['registrant'] = SortedDict()
     response['registrant']['entity'] = makeEntity('Registrant', datadict)
     response['registrant']['contacts'] = SortedDict()
     response['registrant']['contacts']['tech'] = makeEntity('Tech', datadict)
     response['registrant']['contacts']['admin'] = makeEntity('Admin', datadict)
-
 
     output = simplejson.dumps(response, indent='  ')
 
