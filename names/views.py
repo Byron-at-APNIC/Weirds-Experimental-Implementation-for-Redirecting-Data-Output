@@ -1,4 +1,4 @@
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseNotFound
 from django.utils import simplejson
 from django.utils.datastructures import SortedDict
 
@@ -79,7 +79,7 @@ def delegationKeys(data, idx = 1):
 
     return [key] + delegationKeys(data, idx + 1)
 
-def name(request, domain):
+def name(request, domain, path):
     data = lookup(domain)
 
     # Convert data to a dictionary
@@ -111,6 +111,17 @@ def name(request, domain):
     response['registrant']['contacts'] = SortedDict()
     response['registrant']['contacts']['tech'] = makeEntity('Tech', datadict)
     response['registrant']['contacts']['admin'] = makeEntity('Admin', datadict)
+
+    # Follow the path
+    if path:
+        segment = response
+        for key in path.split('/'):
+            if key in segment and isinstance(segment[key], dict):
+                segment = segment[key]
+                print key, segment
+            else:
+                return HttpResponseNotFound('{ "error": "notFound" }', mimetype="application/json")
+        response = segment
 
     output = simplejson.dumps(response, indent='  ')
 
